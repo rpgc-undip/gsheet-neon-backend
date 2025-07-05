@@ -1,10 +1,12 @@
-const { readMultipleSheets } = require('./sheets');
+const { insertDataToDatabase } = require('./sheets');
 
 (async () => {
-  console.log("🚀 Membaca dari beberapa Google Sheets...");
+  console.log("🚀 Memulai proses sinkronisasi GSheet ke Supabase...");
 
-  const data = await readMultipleSheets();
-
-  console.log("✅ Data berhasil dibaca:");
-  console.log(JSON.stringify(data, null, 2));
+  try {
+    await insertDataToDatabase();
+    console.log("✅ Semua data berhasil disinkronkan.");
+  } catch (err) {
+    console.error("❌ Terjadi kesalahan:", err.message);
+  }
 })();
