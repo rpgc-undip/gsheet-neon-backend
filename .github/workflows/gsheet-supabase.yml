@@ -2,7 +2,7 @@ name: GSheet to Supabase
 
 on:
   schedule:
-    - cron: '0 * * * *'  # setiap jam di menit ke-00 (UTC)
+    - cron: '0 * * * *'  # Setiap jam UTC (WIB +7 berarti jam 7 pagi = jam 00 UTC)
   workflow_dispatch:
 
 jobs:
@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v3
 
       - name: Setup Node.js
@@ -20,6 +20,11 @@ jobs:
 
       - name: Install dependencies
         run: npm install
+
+      - name: Log current time (UTC & WIB)
+        run: |
+          echo "🕓 UTC: $(date -u)"
+          echo "🌏 WIB: $(TZ=Asia/Jakarta date)"
 
       - name: Run sync script
         run: node index.js

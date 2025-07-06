@@ -34,7 +34,13 @@ const sheetsList = [
   },
 ];
 
-// Fungsi membaca 1 baris dari setiap sheet
+// 🔁 Helper: konversi waktu WIB → UTC ISO
+function parseWIBtoUTC(wibString) {
+  if (!wibString) return null;
+  return new Date(wibString + '+07:00').toISOString();
+}
+
+// 🔁 Fungsi baca data dari Google Sheets
 async function readMultipleSheets() {
   const client = await auth.getClient();
   const sheets = google.sheets({ version: 'v4', auth: client });
@@ -50,7 +56,6 @@ async function readMultipleSheets() {
 
       const values = res.data.values?.[0] || [];
       results[sheet.name] = values;
-
     } catch (err) {
       console.error(`❌ Gagal membaca ${sheet.name}:`, err.message);
       results[sheet.name] = null;
@@ -60,7 +65,7 @@ async function readMultipleSheets() {
   return results;
 }
 
-// Kirim ke Supabase
+// 🔁 Insert ke Supabase
 async function insertToSupabase(table, data) {
   const response = await fetch(`${SUPABASE_URL}/${table}`, {
     method: 'POST',
@@ -69,7 +74,7 @@ async function insertToSupabase(table, data) {
       Authorization: `Bearer ${SUPABASE_SERVICE_ROLE}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify([data]), // array of row
+    body: JSON.stringify([data]),
   });
 
   if (!response.ok) {
@@ -78,12 +83,12 @@ async function insertToSupabase(table, data) {
   }
 }
 
-// Transformasi baris menjadi objek per tabel
+// 🔁 Transformasi baris sesuai tabel
 function mapRowToObject(table, row) {
   switch (table) {
     case 'electricity':
       return {
-        last_read: row[0],
+        last_read: parseWIBtoUTC(row[0]),
         l1_l2_v: parseFloat(row[1]),
         l1_l3_v: parseFloat(row[2]),
         l3_l1_v: parseFloat(row[3]),
@@ -103,22 +108,22 @@ function mapRowToObject(table, row) {
 
     case 'co2':
       return {
-        s1_last_read: row[0],
+        s1_last_read: parseWIBtoUTC(row[0]),
         s1_humidity_percent: parseFloat(row[1]),
         s1_temperature_c: parseFloat(row[2]),
         s1_co2_ppm: parseFloat(row[3]),
         s1_temp_co2_c: parseFloat(row[4]),
-        s2_last_read: row[5],
+        s2_last_read: parseWIBtoUTC(row[5]),
         s2_humidity_percent: parseFloat(row[6]),
         s2_temperature_c: parseFloat(row[7]),
         s2_co2_ppm: parseFloat(row[8]),
         s2_temp_co2_c: parseFloat(row[9]),
-        s3_last_read: row[10],
+        s3_last_read: parseWIBtoUTC(row[10]),
         s3_humidity_percent: parseFloat(row[11]),
         s3_temperature_c: parseFloat(row[12]),
         s3_co2_ppm: parseFloat(row[13]),
         s3_temp_co2_c: parseFloat(row[14]),
-        s4_last_read: row[15],
+        s4_last_read: parseWIBtoUTC(row[15]),
         s4_humidity_percent: parseFloat(row[16]),
         s4_temperature_c: parseFloat(row[17]),
         s4_co2_ppm: parseFloat(row[18]),
@@ -132,14 +137,14 @@ function mapRowToObject(table, row) {
 
     case 'water':
       return {
-        datetime: row[0],
+        datetime: parseWIBtoUTC(row[0]),
         flow_lpm: parseFloat(row[1]),
         total_l: parseFloat(row[2]),
       };
 
     case 'vehicle':
       return {
-        last_read: row[0],
+        last_read: parseWIBtoUTC(row[0]),
         mobil_per_min: parseFloat(row[1]),
         motor_per_min: parseFloat(row[2]),
         truk_per_min: parseFloat(row[3]),
@@ -153,6 +158,7 @@ function mapRowToObject(table, row) {
   }
 }
 
+// 🔁 Cek duplikat berdasarkan primary key
 async function isDuplicate(table, keyField, keyValue) {
   const url = `${SUPABASE_URL}/${table}?${keyField}=eq.${encodeURIComponent(keyValue)}&select=${keyField}&limit=1`;
   const response = await fetch(url, {
@@ -171,8 +177,7 @@ async function isDuplicate(table, keyField, keyValue) {
   return data.length > 0;
 }
 
-
-// Fungsi utama
+// 🔁 Fungsi utama: sinkronisasi
 async function insertDataToDatabase() {
   const results = await readMultipleSheets();
 
@@ -185,7 +190,6 @@ async function insertDataToDatabase() {
 
     const record = mapRowToObject(table, row);
 
-    // Tentukan key unik per tabel
     const keyField = {
       electricity: 'last_read',
       co2: 's1_last_read',
@@ -210,6 +214,5 @@ async function insertDataToDatabase() {
     console.log(`✅ Data berhasil dikirim ke tabel ${table}`);
   }
 }
-
 
 module.exports = { insertDataToDatabase };
