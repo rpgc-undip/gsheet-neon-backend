@@ -203,6 +203,8 @@ async function insertDataToDatabase() {
       console.warn(`⚠️ Tidak ada nilai ${keyField} untuk ${table}, dilewati.`);
       continue;
     }
+    
+    console.log(`[${table}] UTC timestamp to insert: ${keyValue}`);
 
     const duplicate = await isDuplicate(table, keyField, keyValue);
     if (duplicate) {
